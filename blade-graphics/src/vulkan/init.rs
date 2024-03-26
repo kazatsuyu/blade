@@ -19,6 +19,7 @@ mod layer {
 }
 
 const REQUIRED_DEVICE_EXTENSIONS: &[&ffi::CStr] = &[
+    vk::ExtFullScreenExclusiveFn::name(),
     vk::ExtInlineUniformBlockFn::name(),
     vk::KhrTimelineSemaphoreFn::name(),
     vk::KhrDescriptorUpdateTemplateFn::name(),
@@ -718,6 +719,14 @@ impl super::Context {
             crate::ColorSpace::Srgb => crate::TextureFormat::Bgra8Unorm,
         };
         let vk_format = super::map_texture_format(format);
+
+        let mut surface_full_screen_exclusive_info =
+            vk::SurfaceFullScreenExclusiveInfoEXT::builder()
+                .full_screen_exclusive(vk::FullScreenExclusiveEXT::DISALLOWED)
+                .build();
+        let mut surface_info2_khr = vk::PhysicalDeviceSurfaceInfo2KHR::builder()
+            .push_next(&mut surface_full_screen_exclusive_info);
+
         let create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(surface.raw)
             .min_image_count(effective_frame_count)
@@ -735,7 +744,8 @@ impl super::Context {
             .pre_transform(vk::SurfaceTransformFlagsKHR::IDENTITY)
             .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
             .present_mode(present_mode)
-            .old_swapchain(surface.swapchain);
+            .old_swapchain(surface.swapchain)
+            .push_next(&mut surface_full_screen_exclusive_info);
         let new_swapchain = unsafe {
             surface
                 .extension
